@@ -68,7 +68,8 @@ router.get('/current', async (req, res) => {
 // ──────────────────────────────────────────
 router.post('/', auth, [
   body('nomineeMemberId').isInt({ min: 1 }).withMessage('Please choose a member to nominate'),
-  body('reason').trim().isLength({ min: 50 }).withMessage('Reason must be at least 50 characters'),
+  // Fix #7: Cap reason length to prevent oversized payloads filling the DB.
+  body('reason').trim().isLength({ min: 50, max: 2000 }).withMessage('Reason must be between 50 and 2000 characters'),
 ], async (req, res) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })

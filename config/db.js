@@ -1,15 +1,24 @@
 const mysql = require('mysql2/promise')
 require('dotenv').config()
 
+// Fix #4: Fail fast if critical DB credentials are missing rather than
+// silently falling back to root / empty password.
+if (!process.env.DB_USER || !process.env.DB_PASSWORD) {
+  console.error('❌  DB_USER and DB_PASSWORD must be set in .env — refusing to start.')
+  process.exit(1)
+}
+
 const pool = mysql.createPool({
-  host:     process.env.DB_HOST     || 'localhost',
-  port:     parseInt(process.env.DB_PORT || '3306'),
-  database: process.env.DB_NAME     || 'basega_db',
-  user:     process.env.DB_USER     || 'root',
-  password: process.env.DB_PASSWORD || '',
+  host:              process.env.DB_HOST     || 'localhost',
+  port:              parseInt(process.env.DB_PORT || '3306'),
+  database:          process.env.DB_NAME     || 'basega_db',
+  user:              process.env.DB_USER,
+  password:          process.env.DB_PASSWORD,
   waitForConnections: true,
   connectionLimit:    10,
   queueLimit:         0,
+  connectTimeout:     10000,   // Fix #12: fail after 10 s if DB is unreachable
+  ssl: process.env.DB_SSL === 'true' || process.env.DB_PORT !== '3306' ? { rejectUnauthorized: false } : undefined,
 })
 
 // Test the connection on startup

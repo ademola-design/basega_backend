@@ -149,8 +149,10 @@ CREATE TABLE IF NOT EXISTS messages (
 
 -- ============================================================
 -- SEED: Default admin account
--- Password: Admin@BASEGA2026  (change this after first login!)
--- bcrypt hash generated with 12 rounds
+-- The password hash below was generated with bcrypt (12 rounds).
+-- Fix #3: The plaintext password has been removed from this file.
+-- Change the admin password immediately after first login via
+-- the Change Password screen, or via PUT /api/auth/change-password.
 -- ============================================================
 INSERT INTO members (
   first_name, last_name, email, password_hash,
