@@ -179,7 +179,7 @@ router.get("/:id", async (req, res) => {
                WHERE n.nominee_member_id = m.id AND n.status = 'selected')
           AS alumni_of_month_count,
               m.class_set, m.profession, m.company, m.industry, m.city, m.state,
-              m.photo_url, m.linkedin, m.bio
+              m.photo_url, m.linkedin, m.bio, m.status
              FROM members m WHERE m.id = ? AND m.status IN ('approved','financial')`,
       [req.params.id],
     );
