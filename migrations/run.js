@@ -32,6 +32,11 @@ async function main() {
     process.exit(1)
   }
 
+  if (!process.env.DB_USER || !process.env.DB_PASSWORD) {
+    console.error('DB_USER and DB_PASSWORD must be set in .env before running migrations.')
+    process.exit(1)
+  }
+
   // Strip comment lines, then split into statements.
   const statements = fs.readFileSync(fullPath, 'utf8')
     .split('\n')
@@ -45,8 +50,16 @@ async function main() {
     host:     process.env.DB_HOST     || 'localhost',
     port:     parseInt(process.env.DB_PORT || '3306'),
     database: process.env.DB_NAME     || 'basega_db',
-    user:     process.env.DB_USER     || 'root',
-    password: process.env.DB_PASSWORD || '',
+    user:     process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    ssl: process.env.DB_SSL === 'true' || (process.env.DB_PORT && process.env.DB_PORT !== '3306')
+      ? {
+          rejectUnauthorized: true,
+          ...(process.env.DB_SSL_CA
+            ? { ca: fs.readFileSync(process.env.DB_SSL_CA, 'utf8') }
+            : {}),
+        }
+      : undefined,
     multipleStatements: false,
   })
 

@@ -7,33 +7,56 @@ const rateLimit   = require('express-rate-limit')
 
 const app = express()
 
+app.disable('x-powered-by')
+
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader('Referrer-Policy', 'no-referrer')
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000')
+  }
+  next()
+})
+
 // ──────────────────────────────────────────
 // CORS — allow the React frontend to call this API
 // ──────────────────────────────────────────
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:5173',
-  'http://localhost:5173',
-  'http://localhost:4173',
-]
+const configuredOrigins = process.env.FRONTEND_URLS || process.env.FRONTEND_URL
+const allowedOrigins = (configuredOrigins || (process.env.NODE_ENV === 'production'
+  ? ''
+  : 'http://localhost:5173,http://localhost:4173'))
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean)
+
+if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
+  throw new Error('Set FRONTEND_URL or FRONTEND_URLS to the production frontend origin(s).')
+}
+
+if (process.env.NODE_ENV === 'production' && allowedOrigins.some(origin => !origin.startsWith('https://'))) {
+  throw new Error('Production FRONTEND_URLS origins must use HTTPS.')
+}
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.includes('replace_with') ||
+    (process.env.NODE_ENV === 'production' && process.env.JWT_SECRET.length < 32)) {
+  throw new Error('Set JWT_SECRET to a unique secret of at least 32 characters before starting the backend.')
+}
 
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) callback(null, true)
     else callback(new Error('Not allowed by CORS'))
   },
-  credentials: true,
 }))
 
 // ──────────────────────────────────────────
 // Body parsers
 // ──────────────────────────────────────────
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
-
-// ──────────────────────────────────────────
-// Raw body for Paystack webhook (must come before express.json)
-// ──────────────────────────────────────────
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }))
+app.use(express.json({ limit: '1mb' }))
+app.use(express.urlencoded({ extended: false, limit: '1mb' }))
 
 // ──────────────────────────────────────────
 // Static file serving — uploaded images
@@ -59,9 +82,14 @@ const apiLimiter = rateLimit({
   message: { error: 'Too many requests. Please slow down.' },
 })
 
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1)
+}
+
 // ──────────────────────────────────────────
 // Routes
 // ──────────────────────────────────────────
+app.use('/api', apiLimiter)
 app.use('/api/auth',        authLimiter, require('./routes/auth'))
 app.use('/api/members',     require('./routes/members'))
 app.use('/api/events',      require('./routes/events'))
@@ -89,6 +117,12 @@ app.use((req, res) => {
 // Global error handler
 // ──────────────────────────────────────────
 app.use((err, req, res, next) => {
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ error: 'This origin is not allowed.' })
+  }
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Request body is too large.' })
+  }
   // Upload problems are the caller's fault, not ours — a 5MB photo or a PDF
   // should read as "file too large" / "wrong type", not "internal server error".
   if (err instanceof multer.MulterError) {
@@ -102,7 +136,7 @@ app.use((err, req, res, next) => {
   }
 
   console.error('Unhandled error:', err)
-  res.status(500).json({ error: err.message || 'Internal server error.' })
+  res.status(500).json({ error: 'Internal server error.' })
 })
 
 // ──────────────────────────────────────────

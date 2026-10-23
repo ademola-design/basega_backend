@@ -3,8 +3,10 @@
 -- Run this file once on your qserver.ng MySQL database
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS basega_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE basega_db;
+-- CREATE DATABASE IF NOT EXISTS basega_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- USE basega_db;
+
+USE defaultdb;
 
 -- ============================================================
 -- MEMBERS
@@ -68,6 +70,8 @@ CREATE TABLE IF NOT EXISTS news (
   body       LONGTEXT      DEFAULT NULL,
   category   VARCHAR(100)  DEFAULT 'General',
   image_url  VARCHAR(255)  DEFAULT NULL,
+  video_url_1 VARCHAR(1000) DEFAULT NULL,
+  video_url_2 VARCHAR(1000) DEFAULT NULL,
   author_id  INT           DEFAULT NULL,
   status     ENUM('draft','published') DEFAULT 'published',
   created_at DATETIME      DEFAULT CURRENT_TIMESTAMP,
