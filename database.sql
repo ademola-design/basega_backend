@@ -3,10 +3,8 @@
 -- Run this file once on your qserver.ng MySQL database
 -- ============================================================
 
--- CREATE DATABASE IF NOT EXISTS basega_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
--- USE basega_db;
-
-USE defaultdb;
+CREATE DATABASE IF NOT EXISTS basega_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE basega_db;
 
 -- ============================================================
 -- MEMBERS
