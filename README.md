@@ -38,36 +38,39 @@ wire are camelCase where needed; the backend maps them to MySQL column names:
 | `imageUrl` | `image_url` | Optional; HTTPS URL or `/uploads/...`; up to 255 characters |
 | `videoUrl1` | `video_url_1` | Optional HTTPS URL; up to 1,000 characters |
 | `videoUrl2` | `video_url_2` | Optional HTTPS URL; up to 1,000 characters |
+| `images` | `news_media` rows (`media_type = 'image'`) | Optional array of up to 20 HTTPS URLs or `/uploads/...` paths; each up to 1,000 characters |
+| `videos` | `news_media` rows (`media_type = 'video'`) | Optional array of up to 20 HTTPS URLs; each up to 1,000 characters |
 | `status` | `status` | `published` or `draft`; defaults to `published` |
 
-The frontend must send the API names (`imageUrl`, `videoUrl1`, `videoUrl2`),
-not the database names (`image_url`, `video_url_1`, `video_url_2`). The backend
-performs that mapping. The authenticated request also needs
+The frontend sends API names, not database column names. `videoUrl1` and
+`videoUrl2` remain supported for older clients; newer clients can send any
+number of videos in the `videos` array (up to 20). Public article responses
+include `images` and `videos` arrays. The authenticated request also needs
 `Authorization: Bearer <admin-token>`.
 
 ### Bring an existing database up to date
 
-The initial schema in `database.sql` already contains both video columns. If
-the deployed database was created before video links were added, run the
-one-time migration from the backend project using the production database
-credentials (keep them private):
+The initial schema in `database.sql` contains the legacy video columns and the
+`news_media` table. For an existing database, run the media migration before
+deploying the updated API. From the backend project, using the production
+database credentials (keep them private):
 
 ```powershell
-node migrations/run.js 003_news_video_links.sql
+node migrations/run.js 004_news_media.sql
 ```
 
 The command uses `.env` in this project, including `DB_SSL` and `DB_SSL_CA`.
 For an existing database, run migrations rather than rerunning the entire
-`database.sql` seed script. Back up first. The migration runner reports columns
-that already exist as skipped.
+`database.sql` seed script. Back up first. This migration creates the media
+table and is safe to rerun.
 
 Confirm the schema in MySQL:
 
 ```sql
-SHOW COLUMNS FROM news LIKE 'video_url_%';
+SHOW TABLES LIKE 'news_media';
+DESCRIBE news_media;
 ```
 
-After deploying the updated backend and running the migration, publish a
-test article from Admin. Check the returned `201` response and verify the
-article and optional video URLs appear on the public News page. Draft articles
-remain hidden from public endpoints.
+Run the migration first, then deploy the updated backend. Publish a test
+article with multiple images and videos from Admin; verify they appear on the
+public article page. Draft articles remain hidden from public endpoints.
